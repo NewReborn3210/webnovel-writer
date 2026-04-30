@@ -1,0 +1,40 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # 每天 UTC 18:00 = 北京时间次日 02:00
+    - cron: '0 18 * * *'
+  workflow_dispatch: # 支持在 Actions 页面手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync master with upstream
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
+        with:
+          target_sync_branch: master
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          upstream_sync_branch: master
+          upstream_sync_repo: lingfengQAQ/webnovel-writer
+          upstream_pull_args: '--ff-only --tags'
+
+      - name: Report result
+        if: steps.sync.outputs.has_new_commits == 'true'
+        run: echo "✅ 已同步上游新提交：${{ steps.sync.outputs.new_commits_count }} 个"
+
+      - name: Nothing to do
+        if: steps.sync.outputs.has_new_commits == 'false'
+        run: echo "ℹ️ 上游无新提交"
